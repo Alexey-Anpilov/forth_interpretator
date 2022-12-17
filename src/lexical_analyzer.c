@@ -95,11 +95,24 @@ void error(enum states state, char r){
     exit(1);
 }
 
-void write_to_file(){
+void write_lexems_to_file(){
     FILE* file;
     file = fopen("lexem_stream.txt", "w");
     for (int i = 0; i < lex_stream_len; i++){
         fprintf(file, "%d ", lex_stream[i]);
+    }
+    fclose(file);
+}
+
+void write_name_table_to_file(){
+    FILE* file;
+    file = fopen("name_table.txt", "w");
+    name* p = name_table[0];
+    for (int i  = 1; i < table_size; p = name_table[i], i++)
+    {    
+        for(name* n = p; n; n=n->next){
+            fprintf(file, "%d %s %d\n",n->value , n->string, n->type);
+        }
     }
     fclose(file);
 }
@@ -110,7 +123,8 @@ void terminate(enum states state, char r){
     for (int i = 0; i < lex_stream_len; i++, p++){
         printf("%d, ", *p);
     }
-    write_to_file();
+    write_lexems_to_file();
+    write_name_table_to_file();
     free(word);
     exit(0);
 }
