@@ -14,7 +14,7 @@ char* word;
 char w[] = "1 2 dup + = typ 34 ( sdfsdfsd) ffff";  //пробная входная цепочка
 char* c = w;
 
-
+ // добавление символа к концу строки
 char* add_symbol_to_string(char* str, char c){
     size_t len = strlen(str);
     char* res = (char*)calloc(len + 2, sizeof(char));
@@ -26,6 +26,7 @@ char* add_symbol_to_string(char* str, char c){
     return res;
 }
 
+// конкатенация двух строк 
 char* concat(char *s1, char *s2) {
     size_t len1 = strlen(s1);
     size_t len2 = strlen(s2);                      
@@ -39,6 +40,7 @@ char* concat(char *s1, char *s2) {
     return result;
 }
 
+// формирование строки из символа
 char* make_string_from_char(char c){
     char* res = (char*)malloc(sizeof(char) + 1);
     *res = c;
@@ -93,18 +95,27 @@ void error(enum states state, char r){
     exit(1);
 }
 
+void write_to_file(){
+    FILE* file;
+    file = fopen("lexem_stream.txt", "w");
+    for (int i = 0; i < lex_stream_len; i++){
+        fprintf(file, "%d ", lex_stream[i]);
+    }
+    fclose(file);
+}
+
 void terminate(enum states state, char r){
     printf("Input string was successfully recognised\n");
     int* p = lex_stream;
     for (int i = 0; i < lex_stream_len; i++, p++){
         printf("%d, ", *p);
     }
-    printf("\n");
-    //print_table(name_table);
+    write_to_file();
     free(word);
     exit(0);
 }
 
+// таблица переходов
 
 const struct transition state_transition_table[states_num][input_num] = {
     [S][number] = {N, number_create},
@@ -163,6 +174,7 @@ const struct transition state_transition_table[states_num][input_num] = {
     [T][minus] = {T, NULL}, 
 }; 
 
+// массив ключевых слов 
 
 char* key_names[44] = {"+", "-", "*", "/", ".", "dup", "drop", "mod",
                        "over", "rot", "swap", "roll", "abs", "negate", "1+",
@@ -171,6 +183,7 @@ char* key_names[44] = {"+", "-", "*", "/", ".", "dup", "drop", "mod",
                        "=", "0<", "0=", "0>", "if", "else", "begin", "until",
                        "repeat", "while", "do", "loop", "then", "+loop"};
 
+// заполнение таблицы имен ключевыми словами 
 void fill_table_with_key_names(name** table){
     for (int i = 0; i < 44; i++){
         find_name(table, key_names[i], key_name, 1);
