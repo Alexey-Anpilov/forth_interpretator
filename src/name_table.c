@@ -1,3 +1,11 @@
+/*
+    Файл с реализацией необходимых функций для формирования и работы с таблицей имен
+
+    find_name - позволяет вносить новые имена в таблицу и выполнять поиск
+    print_table - выводит таблицу имен
+
+    В таблице имен ключевые слова заносятся с отрицательным значением, начиная с -1. Остальные имеют значения от 0 и далее.
+*/
 #include"stdlib.h"
 #include"stdio.h"
 #include"ctype.h"
@@ -56,6 +64,20 @@ void print_table(name** table){
     {    
         for(name* n = p; n; n=n->next){
             printf("%s: %d \n",n->string, n->value);
+        }
+    }
+}
+
+void free_table(name** table){
+    name* p = table[0];
+    for (int i = 1; i < table_size; p = table[i], i++)
+    {
+        name* n = p;
+        while(n){
+            name* t = n;
+            n = n->next;
+            free(t->string);
+            free(t);
         }
     }
 }

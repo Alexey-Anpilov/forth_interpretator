@@ -1,3 +1,12 @@
+/* 
+    Файл с реализацией лексического анализатора.
+    lexical_analyzer - функция, реализующая основную логику работы автомата
+    остальные функции - вспомогательные или реализующие процедуры при переходе из состояние в состояние
+    ---
+    state_transition_table - 2-рный массив задающий таблицу переходов автомата
+    
+*/
+
 #include"stdlib.h"
 #include"stdio.h"
 #include"ctype.h"
@@ -11,8 +20,8 @@ int* lex_stream;
 int* lex_p;
 int lex_stream_len;
 char* word;   
-char w[] = "1 2 dup + = typ 34 ( sdfsdfsd) ffff";  //пробная входная цепочка
-char* c = w;
+char* c;
+char* input_string;
 
  // добавление символа к концу строки
 char* add_symbol_to_string(char* str, char c){
@@ -50,12 +59,13 @@ char* make_string_from_char(char c){
 }
 
 
-
+// для образования числовой константы
 void number_create(enum states state, char r){
     word = add_symbol_to_string(word, r);
     return;
 }
 
+// для образования слова 
 void word_create(enum states state, char r){
     if (state == COMorW){
         word = add_symbol_to_string(word, '(');
@@ -69,6 +79,7 @@ void word_create(enum states state, char r){
     return;
 }
 
+// когда формирование числа завершено, оно заносится в таблицу имен и в выходную последовательность
 void number_done(enum states state, char r){
     name* n = find_name(name_table, word, num, 1);
     *lex_p = n->value;
@@ -79,6 +90,8 @@ void number_done(enum states state, char r){
     return;
 }
 
+
+// когда формирование слова завершено, оно заносится в таблицу имен и в выходную последовательность
 void word_done(enum states state, char r){
     name* n = find_name(name_table, word, id_name, 1);
     *lex_p = n->value;
@@ -89,24 +102,33 @@ void word_done(enum states state, char r){
     return;
 }
 
-void error(enum states state, char r){
-    printf("Error occured in state %d when symbol %c came", state, r);
-    free(word);
-    exit(1);
+// входная последовательность читается из файла 
+char* read_from_file(char* file_name){
+    char* text = (char*)calloc(200, sizeof(char));
+    char* p = text;
+    FILE* f;
+    f = fopen(file_name, "r");
+    while((*p = fgetc(f)) != EOF){
+        p++;
+    }
+    *p = '\0';
+    return text;
 }
 
-void write_lexems_to_file(){
+// поток лексем записывается в файл
+void write_lexems_to_file(char* file_name){
     FILE* file;
-    file = fopen("lexem_stream.txt", "w");
+    file = fopen(file_name, "w");
     for (int i = 0; i < lex_stream_len; i++){
         fprintf(file, "%d ", lex_stream[i]);
     }
     fclose(file);
 }
 
-void write_name_table_to_file(){
+// таблица имен записывается в файл
+void write_name_table_to_file(char* file_name){
     FILE* file;
-    file = fopen("name_table.txt", "w");
+    file = fopen(file_name, "w");
     name* p = name_table[0];
     for (int i  = 1; i < table_size; p = name_table[i], i++)
     {    
@@ -117,26 +139,25 @@ void write_name_table_to_file(){
     fclose(file);
 }
 
+// окончание работы автомата
 void terminate(enum states state, char r){
-    printf("Input string was successfully recognised\n");
-    int* p = lex_stream;
-    for (int i = 0; i < lex_stream_len; i++, p++){
-        printf("%d, ", *p);
-    }
-    write_lexems_to_file();
-    write_name_table_to_file();
+    printf("Input string was successfully recognised. Output sequence and table of names were written to files - lexem_stream.txt and name_table.txt.\n");
+    write_lexems_to_file("lexem_stream.txt");
+    write_name_table_to_file("name_table.txt");
     free(word);
+    free_table(name_table);
+    free(lex_stream);
+    free(input_string);
     exit(0);
 }
 
 // таблица переходов
-
 const struct transition state_transition_table[states_num][input_num] = {
     [S][number] = {N, number_create},
     [S][letter] = {W, word_create},
     [S][space] = {S, NULL},
     [S][comment_bkt_open] = {COMorW, NULL},
-    [S][comment_bkt_close] = {T, NULL},     // добавить обработку ошибки здесь
+    [S][comment_bkt_close] = {W, word_create},
     [S][minus] = {N, number_create},
     [S][other] = {W, word_create},
     [S][exit_symbol] = {T, terminate},
@@ -189,7 +210,6 @@ const struct transition state_transition_table[states_num][input_num] = {
 }; 
 
 // массив ключевых слов 
-
 char* key_names[44] = {"+", "-", "*", "/", ".", "dup", "drop", "mod",
                        "over", "rot", "swap", "roll", "abs", "negate", "1+",
                        "1-", "pick", ".", ":", ";", "@", "!", "constant",
@@ -204,20 +224,25 @@ void fill_table_with_key_names(name** table){
     }
 }
 
-
+// обработка входных символов и работа автомата
 void lexical_analyzer(){
+    // задаем начальные параметры и заполняем таблицу имен ключевыми словами
     table_size = 40;
     lex_stream_len = 0;
     name_table = (name**)calloc(table_size, sizeof(name));
     fill_table_with_key_names(name_table);
-
-    lex_stream = (int*)calloc(100, sizeof(int));    // ToDo: довыделение памяти 
+    lex_stream = (int*)calloc(100, sizeof(int));
     lex_p = lex_stream;
     word = (char*)calloc(31, sizeof(char));
 
+    
+    input_string = read_from_file("input_string.txt");
+    c = input_string;
     enum states current_state = S;
     enum input_element current_element;
     struct transition current_transition;
+    
+    // считываем символ и определяем его категорию
     while (1){
         if (isdigit(*c)){
             current_element = number;
@@ -246,17 +271,16 @@ void lexical_analyzer(){
         else{
             current_element = other;
         }
-
+        // переходим в новое состояние, выполняя соответствующую процедуру
         current_transition = state_transition_table[current_state][current_element];
         if (current_transition.procedure != NULL){
                 current_transition.procedure(current_state, *c);
             
             }
                 current_state = current_transition.new_state;
+        
         c++;
-    }
-    
-       
+    }  
 }
 
 int main(){
